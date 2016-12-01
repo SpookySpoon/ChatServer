@@ -1,0 +1,8 @@
+syntax = "proto3";
+package chatMes;
+message hello
+{
+	string mesText=1;
+	uint64 dateTime=2;
+	string nickName=3;
+}

@@ -1,0 +1,113 @@
+#include <QThread>
+#include "TcpMsgServer.h"
+#include "mytcpconnection.h"
+
+
+MyTcpConnection::MyTcpConnection(const int SocketDescriptor, TcpMsgServer* refServer, QObject *parent)
+    :QTcpSocket(parent),hostingServer(refServer), mySocketDescriptor(SocketDescriptor)
+{
+    qDebug()<<"Created connection constructor is running at thread: "<<QThread::currentThreadId();
+    moveThisToThread();
+}
+MyTcpConnection::~MyTcpConnection()
+{
+    hostingServer->deleteName(user);
+}
+void MyTcpConnection::moveThisToThread()
+{
+    QThread* myThread = new QThread;
+    connect(myThread,SIGNAL(started()),this,SLOT(initializePeer()));
+    connect(this,SIGNAL(disconnected()),myThread,SLOT(quit()));
+    connect(myThread,SIGNAL(finished()),myThread,SLOT(deleteLater()));
+    connect(this,SIGNAL(disconnected()),this,SLOT(deleteLater()));
+    connect(this,SIGNAL(readyRead()),this,SLOT(receiveMessage()));
+    connect(hostingServer,SIGNAL(newMessageRecieved()),this,SLOT(broadcastMesssage()));
+    this->moveToThread(myThread);
+    myThread->start();
+}
+
+void MyTcpConnection::initializePeer()
+{
+    qDebug()<<"Connection is initialized at thread: "<<QThread::currentThreadId();
+    if (!this->setSocketDescriptor(mySocketDescriptor))
+    {
+        return;
+        emit disconnected(); //Вот тут я добавил сигнал, чтобы не было утечки. 
+        //Номально так делать ( у меня дальше связан этот сигнал со слотами удаления) или надо лучше писать Abort
+    }
+    else
+    {
+        requestID();
+    }
+}
+
+void MyTcpConnection::broadcastMesssage()
+{
+    qDebug()<<"Message broadcasted at thread: "<<QThread::currentThreadId();
+    QString text = hostingServer->sendMessage();
+    operationSend(text);
+}
+
+void MyTcpConnection::receiveMessage()
+{
+    qDebug()<<"Message received at thread: "<<QThread::currentThreadId();
+    if(!idRequestState)
+    {
+        hostingServer->receiveMessage(QString("%1[::]%2").arg(operationRecieve()).arg(user));
+    }
+    else
+    {
+        QString name=operationRecieve().split("[::]").at(0);
+        name=name.left(15);
+        if(name.isEmpty())
+        {
+            QString greetMes=tr("AHOHUMYCbI UDYT HA XYU!");
+            operationSend(greetMes);
+            this->waitForBytesWritten();
+            this->abort();
+        }
+        else if(hostingServer->checkName(name))
+        {
+            QString greetMes=QString("The name is already in use. Please, choose another one.");
+            operationSend(greetMes);
+        }
+        else
+        {
+            user=name;
+            QString greetMes=QString("Welcome, dear %1, to this amazing chat!").arg(user);
+            operationSend(greetMes);
+            idRequestState=false;
+        }
+    }
+}
+
+void MyTcpConnection::requestID()
+{
+
+    QString mes="Greetings, stranger! What is your name?";
+    operationSend(mes);
+}
+
+void MyTcpConnection::operationSend(const QString& message)
+{
+
+    QByteArray block;
+    QDataStream out(&block, QIODevice::WriteOnly);
+    QString text = message;
+    out << text;
+    this->write(block);
+}
+QString MyTcpConnection::operationRecieve()
+{
+    QString incomingMessage;
+    in.setDevice(this);
+    in.startTransaction();
+    in >> incomingMessage;
+    if (!in.commitTransaction())
+    {
+        incomingMessage="Message receipt has failed";
+    }
+    return incomingMessage;
+}
+
+
