@@ -8,11 +8,12 @@ CONFIG += console
 
 TEMPLATE = app
 
-SOURCES += main.cpp \
+SOURCES += \
     tcpconnection.cpp \
     tcpmsgserver.cpp \
     connectionfactory.cpp \
-    messageformat.pb.cc
+    messageformat.pb.cc \
+    main.cpp
 
 HEADERS += \
     tcpconnection.h \
