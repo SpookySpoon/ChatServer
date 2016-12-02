@@ -5,7 +5,7 @@
 int main(int argc, char *argv[])
 {
     //SomeChanges obana one and Anothe One aga
-    //another line
+    //another line and another one
     QCoreApplication a(argc, argv);
     qDebug()<<"Main thread is "<<QThread::currentThreadId();
     TcpMsgServer opa;
