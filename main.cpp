@@ -4,7 +4,7 @@
 #include "tcpconnection.h"
 int main(int argc, char *argv[])
 {
-    //SomeChanges obana
+    //SomeChanges obana one
     QCoreApplication a(argc, argv);
     qDebug()<<"Main thread is "<<QThread::currentThreadId();
     TcpMsgServer opa;
